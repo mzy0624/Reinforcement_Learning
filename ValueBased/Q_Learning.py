@@ -36,4 +36,5 @@ class Q_Learning(Base):
                 self.update_epsilon(episode)
                 if reward > 0:
                     print(f'{episode = }, {t = }')
+                    self.save_Q()
                 break

@@ -36,7 +36,6 @@ class Base:
     def train(self):
         for episode in range(self.episodes):
             self.train_an_episode(episode)
-        self.save_Q()
     
     def play(self):
         state, info = self.env.reset()

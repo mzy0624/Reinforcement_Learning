@@ -3,10 +3,10 @@ import numpy as np
 from itertools import count
 from .Buffer import ReplayBuffer
 from .NaiveDQN import NaiveDQN
-from .Network import Network
+from Network import Network
 
 class DQN(NaiveDQN):
-    def __init__(self, env, alpha=0.001, gamma=0.95, episodes=100, max_epsilon=0.3, min_epsilon=0.05, epsilon_decay_rate=0.005, buffer_capacity=10000, batch_size=32, T_update_steps=10):
+    def __init__(self, env, alpha=0.001, gamma=0.95, episodes=1000, max_epsilon=1, min_epsilon=0.05, epsilon_decay_rate=0.005, buffer_capacity=10000, batch_size=32, T_update_steps=10):
         super().__init__(env, alpha, gamma, episodes, max_epsilon, min_epsilon, epsilon_decay_rate)        
         self.buffer = ReplayBuffer(buffer_capacity)
         self.batch_size = batch_size
@@ -52,10 +52,11 @@ class DQN(NaiveDQN):
             state = next_state
             
             if done:
+                print(f'{episode = }, {t = }, {self.epsilon = }')
                 self.update_epsilon(episode)
                 if reward > 0:
-                    print(f'{episode = }, {t = }, {self.epsilon = }')
                     self.save_Q()
+                    print('==========================================')
                 break
             
             if episode % self.T_update_steps == 0:

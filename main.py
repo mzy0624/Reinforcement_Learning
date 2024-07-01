@@ -1,11 +1,13 @@
 from ValueBased import Q_Learning, SARSA, NaiveDQN, DQN
+from PolicyBased import Reinforce
 from Env.FrozenLakeEnv import FrozenLakeEnv
 def main(alg='Q_Learning'):
     env = FrozenLakeEnv()
     # agent = Q_Learning(env)
     # agent = SARSA(env)
-    # agent = naiveDQN(env)
-    agent = DQN(env, max_epsilon=0.3)
+    # agent = NaiveDQN(env)
+    # agent = DQN(env)
+    agent = Reinforce(env)
     agent.train()
     input('trained')
     agent.play()

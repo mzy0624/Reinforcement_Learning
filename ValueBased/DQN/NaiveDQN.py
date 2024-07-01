@@ -1,8 +1,9 @@
 from ..Base import Base
-from .Network import Network
+from Network import Network
 import os
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 from itertools import count
@@ -11,7 +12,7 @@ class NaiveDQN(Base):
     '''
         DQN without Replay Buffer and Target Network
     '''
-    def __init__(self, env, alpha=0.001, gamma=0.95, episodes=100, max_epsilon=0.3, min_epsilon=0.05, epsilon_decay_rate=0.005):
+    def __init__(self, env, alpha=0.001, gamma=0.95, episodes=1000, max_epsilon=1, min_epsilon=0.05, epsilon_decay_rate=0.005):
         super().__init__(env, alpha, gamma, episodes, max_epsilon, min_epsilon, epsilon_decay_rate)
         
     def build_Q(self):
@@ -39,13 +40,13 @@ class NaiveDQN(Base):
         return one_hot
     
     def select_action(self, state):
-        return self.epsilon_greedy(self.one_hot_encode(state))
+        return self.epsilon_greedy(state)
 
     def update_Q(self, state, action, reward, next_state, done=None):
-        state      = torch.tensor(self.one_hot_encode(state),      dtype=torch.float32).unsqueeze(0)    # (1, 16)
-        next_state = torch.tensor(self.one_hot_encode(next_state), dtype=torch.float32).unsqueeze(0)    # (1, 16)
-        reward     = torch.tensor([reward],                        dtype=torch.float32)                 # (1)
-        action     = torch.tensor([[action]],                      dtype=torch.int64)                   # (1, 1)
+        state      = torch.tensor(state,      dtype=torch.float32).unsqueeze(0)    # (1, 16)
+        next_state = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)    # (1, 16)
+        reward     = torch.tensor([reward],   dtype=torch.float32)                 # (1)
+        action     = torch.tensor([[action]], dtype=torch.int64)                   # (1, 1)
         
         q_values = self.Q_Net(state)                # (1, n_action)
         next_q_values = self.Q_Net(next_state)      # (1, n_action)
@@ -61,8 +62,10 @@ class NaiveDQN(Base):
     def train_an_episode(self, episode):
         state, info = self.env.reset()
         for t in count():
+            state = self.one_hot_encode(state)
             action = int(self.select_action(state))
             next_state, reward, done, info = self.env.step(action)
+            next_state = self.one_hot_encode(next_state)
             if done and reward == 0:
                 reward = -1
             self.update_Q(state, action, reward, next_state, done)
