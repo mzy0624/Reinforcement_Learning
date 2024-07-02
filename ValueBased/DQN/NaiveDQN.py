@@ -3,20 +3,16 @@ from Network import Network
 import os
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
-import numpy as np
 from itertools import count
 
 class NaiveDQN(Base):
-    '''
-        DQN without Replay Buffer and Target Network
-    '''
+    ''' Deep Q-Network without Replay Buffer and Target Network '''
     def __init__(self, env, alpha=0.001, gamma=0.95, episodes=1000, max_epsilon=1, min_epsilon=0.05, epsilon_decay_rate=0.005):
         super().__init__(env, alpha, gamma, episodes, max_epsilon, min_epsilon, epsilon_decay_rate)
         
     def build_Q(self):
-        self.Q_path = './build/Q_DQN.bin'
+        self.Q_path = './build/Q_Naive_DQN.bin'
         self.Q_Net = Network(self.state_dim, self.action_dim)
         if os.path.exists(self.Q_path):
             self.Q_Net.load_state_dict(torch.load(self.Q_path))

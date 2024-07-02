@@ -7,25 +7,26 @@ from ..Base import Base
 
 class ActorCritic(Base):
     def __init__(self, env, alpha_actor=0.001, alpha_critic=0.01, gamma=0.99, episodes=1000):
+        policy = PolicyNetwork(env.state_dim, env.action_dim)
+        super().__init__(env, policy, gamma, episodes)
         # Actor
-        actor = PolicyNetwork(env.state_dim, env.action_dim)
-        super().__init__(env, actor, gamma, episodes)
-        # Critic
-        self.actor = self.policy
+        self.actor = policy
         self.optimizer_actor = optim.Adam(self.actor.parameters(), lr=alpha_actor)
+        # Critic
         self.critic = ValueNetwork(self.state_dim)
         self.optimizer_critic = optim.Adam(self.critic.parameters(), lr=alpha_critic)
-
-    def select_action(self, state):        
-        with torch.no_grad():
-            probs = self.actor(state)
-            action = torch.multinomial(probs, num_samples=1).item()
-        return action
-
+ 
+    def td_error(self, state, next_state, reward, done):
+        return reward + self.gamma * self.critic(next_state) * (1 - done) - self.critic(state)
+    
+    def loss_function(self, state, next_state, reward, done, log_prob):
+        delta = self.td_error(state, next_state, reward, done)
+        actor_loss = -log_prob * delta.detach()
+        critic_loss = 0.5 * delta.pow(2).mean()
+        return actor_loss, critic_loss
+    
     def train_an_episode(self, episode):
         state, info = self.env.reset()
-        rewards = []
-        log_probs = []
         for t in count():
             state = torch.tensor(np.array(state), dtype=torch.float)
             action = self.select_action(state)
@@ -35,15 +36,14 @@ class ActorCritic(Base):
                 reward = -1
             reward = torch.tensor(reward, dtype=torch.float).unsqueeze(0)
             done = torch.tensor(done, dtype=torch.float).unsqueeze(0)
-
             log_prob = torch.log(self.actor(state)[action])
-            log_probs.append(log_prob)
-            rewards.append(reward)
             
-            # Update Critic
-            td_error = reward + self.gamma * self.critic(next_state) * (1 - done) - self.critic(state)
-            critic_loss = td_error.pow(2).mean()
+            value = self.critic(state)
+            next_value = self.critic(next_state)
+            td_error = reward + self.gamma * next_value * (1 - done) - value
             
+            # Update Critic            
+            critic_loss = 0.5 * td_error.pow(2).mean()
             self.optimizer_critic.zero_grad()
             critic_loss.backward()
             self.optimizer_critic.step()
