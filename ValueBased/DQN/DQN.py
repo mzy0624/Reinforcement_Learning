@@ -10,7 +10,7 @@ class DQN(NaiveDQN):
         super().__init__(env, alpha, gamma, episodes, max_epsilon, min_epsilon, epsilon_decay_rate)        
         self.buffer = ReplayBuffer(buffer_capacity)
         self.batch_size = batch_size
-        self.T_Net = Network(self.n_state, self.n_action)   # Target Network
+        self.T_Net = Network(self.state_dim, self.action_dim)   # Target Network
         self.T_update_steps = T_update_steps
         self.update_T()
             
@@ -21,19 +21,17 @@ class DQN(NaiveDQN):
         if len(self.buffer) < self.batch_size:
             return
         states, actions, rewards, next_states, dones = self.buffer.sample(self.batch_size)
-        # Creating a tensor from a list of numpy.ndarrays is extremely slow. 
-        # Converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor.
-        states      = torch.tensor(np.array(states),      dtype=torch.float32)  # (bs, 16)
-        next_states = torch.tensor(np.array(next_states), dtype=torch.float32)  # (bs, 16)
-        rewards     = torch.tensor(rewards, dtype=torch.float32)                # (bs)
-        actions     = torch.tensor(actions, dtype=torch.int64).unsqueeze(1)     # (bs, 1)
-        dones       = torch.tensor(dones,   dtype=torch.float32)                # (bs)
+        states      = torch.tensor(np.array(states),      dtype=torch.float)  # (bs, 16)
+        next_states = torch.tensor(np.array(next_states), dtype=torch.float)  # (bs, 16)
+        rewards     = torch.tensor(rewards, dtype=torch.float)                # (bs)
+        actions     = torch.tensor(actions, dtype=torch.int64).unsqueeze(1)   # (bs, 1)
+        dones       = torch.tensor(dones,   dtype=torch.float)                # (bs)
         
-        q_values = self.Q_Net(states).gather(1, actions)    # (n_action, bs) -> (n_action, 1)
-        next_q_values = self.T_Net(next_states).max(1)[0]   # (n_action, bs) -> (n_action)
+        q_values = self.Q_Net(states).gather(1, actions)    # (action_dim, bs) -> (action_dim, 1)
+        next_q_values = self.T_Net(next_states).max(1)[0]   # (action_dim, bs) -> (action_dim)
         # next_q_values = self.Q_Net(next_states).max(1)[0]
-        targets = rewards + (1 - dones) * self.gamma * next_q_values    # (n_action)
-        targets = targets.unsqueeze(1)  # (n_action, 1)
+        targets = rewards + (1 - dones) * self.gamma * next_q_values    # (action_dim)
+        targets = targets.unsqueeze(1)  # (action_dim, 1)
         loss = self.criterion(q_values, targets)
         
         self.optimizer.zero_grad()
@@ -47,7 +45,7 @@ class DQN(NaiveDQN):
             next_state, reward, done, info = self.env.step(action)
             if done and reward == 0:
                 reward = -1
-            self.buffer.push(self.one_hot_encode(state), action, reward, self.one_hot_encode(next_state), done)
+            self.buffer.push(state, action, reward, next_state, done)
             self.update_Q()
             state = next_state
             

@@ -11,24 +11,21 @@ class Base:
         def update_epsilon(episode):
             self.epsilon = min_epsilon + (max_epsilon - min_epsilon) * np.exp(-epsilon_decay_rate * episode)
         self.update_epsilon = update_epsilon
-        self.n_state = env.n_state
-        self.n_action = env.n_action
+        self.state_dim = env.state_dim
+        self.action_dim = env.action_dim
         self.build_Q()
     
     def build_Q(self):
         self.Q_path = None
         self.Q = None
     
-    def epsilon_greedy(self, state):
-        if np.random.uniform() < self.epsilon or (self.Q.iloc[state] == 0).all():
-            return self.env.sample_action()
-        return self.Q.iloc[state].idxmax()
+    def greedy(self, state):
+        pass
     
     def select_action(self, state):
-        return self.epsilon_greedy(state)
-    
-    def save_Q(self):
-        pass
+        if np.random.uniform() < self.epsilon:
+            return self.env.sample_action() # random
+        return self.greedy(state)
     
     def train_an_episode(self, episode):
         pass

@@ -2,20 +2,25 @@ import gym
 from .EnvBase import EnvBase
 class FrozenLakeEnv(EnvBase):
     def __init__(self):
-        super().__init__()
-        self.env = gym.make('FrozenLake-v1', desc=None, map_name='4x4', is_slippery=False, render_mode='human')
-        self.state_space = self.env.observation_space
-        self.action_space = self.env.action_space
-        self.n_state = self.state_space.n
-        self.n_action = self.action_space.n
+        env = gym.make('FrozenLake-v1', desc=None, map_name='4x4', is_slippery=False, render_mode='human')
+        super().__init__(
+            env=env,
+            state_type='Discrete',
+            action_type='Discrete',
+            state_dim=env.observation_space.n,
+            action_dim=env.action_space.n
+        )
     
-    def reset(self):
-        return self.env.reset()
-        
-    def step(self, action):
+    def reset(self, one_hot=True):
+        state, info = self.env.reset()
+        if one_hot:
+            state = self.one_hot_encode(state, self.state_dim)
+        ''' state: int 0~15 or one_hot_encode list len=16'''
+        return state, info
+    
+    def step(self, action, one_hot=True):
         next_state, reward, terminated, truncated, info = self.env.step(action)
         done = terminated or truncated
+        if one_hot:
+            next_state = self.one_hot_encode(next_state, self.state_dim)
         return next_state, reward, done, info
-    
-    def sample_action(self):
-        return self.action_space.sample()

@@ -17,7 +17,7 @@ class NaiveDQN(Base):
         
     def build_Q(self):
         self.Q_path = './build/Q_DQN.bin'
-        self.Q_Net = Network(self.n_state, self.n_action)
+        self.Q_Net = Network(self.state_dim, self.action_dim)
         if os.path.exists(self.Q_path):
             self.Q_Net.load_state_dict(torch.load(self.Q_path))
         self.optimizer = optim.Adam(self.Q_Net.parameters(), lr=self.alpha)
@@ -26,30 +26,20 @@ class NaiveDQN(Base):
     def save_Q(self):
         torch.save(self.Q_Net.state_dict(), self.Q_path)
 
-    def epsilon_greedy(self, state):
-        if np.random.uniform() < self.epsilon:
-            return self.env.sample_action()
+    def greedy(self, state):
         with torch.no_grad():
-            state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+            state = torch.tensor(state, dtype=torch.float).unsqueeze(0)
             q_values = self.Q_Net(state)
             return q_values.max(1)[1].item()
-
-    def one_hot_encode(self, state):
-        one_hot = np.zeros(self.n_state)
-        one_hot[state] = 1
-        return one_hot
     
-    def select_action(self, state):
-        return self.epsilon_greedy(state)
-
     def update_Q(self, state, action, reward, next_state, done=None):
-        state      = torch.tensor(state,      dtype=torch.float32).unsqueeze(0)    # (1, 16)
-        next_state = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)    # (1, 16)
-        reward     = torch.tensor([reward],   dtype=torch.float32)                 # (1)
-        action     = torch.tensor([[action]], dtype=torch.int64)                   # (1, 1)
+        state      = torch.tensor(state,      dtype=torch.float).unsqueeze(0)    # (1, 16)
+        next_state = torch.tensor(next_state, dtype=torch.float).unsqueeze(0)    # (1, 16)
+        reward     = torch.tensor([reward],   dtype=torch.float)                 # (1)
+        action     = torch.tensor([[action]], dtype=torch.int64)                 # (1, 1)
         
-        q_values = self.Q_Net(state)                # (1, n_action)
-        next_q_values = self.Q_Net(next_state)      # (1, n_action)
+        q_values = self.Q_Net(state)                # (1, action_dim)
+        next_q_values = self.Q_Net(next_state)      # (1, action_dim)
         target = reward + (1 - done) * self.gamma * next_q_values.max(1)[0]
         target_f = q_values.clone()
         target_f[0][action] = target
@@ -62,10 +52,8 @@ class NaiveDQN(Base):
     def train_an_episode(self, episode):
         state, info = self.env.reset()
         for t in count():
-            state = self.one_hot_encode(state)
             action = int(self.select_action(state))
             next_state, reward, done, info = self.env.step(action)
-            next_state = self.one_hot_encode(next_state)
             if done and reward == 0:
                 reward = -1
             self.update_Q(state, action, reward, next_state, done)
